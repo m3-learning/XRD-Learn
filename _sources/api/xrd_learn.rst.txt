@@ -1,0 +1,37 @@
+xrd\_learn package
+==================
+
+Submodules
+----------
+
+xrd\_learn.skeleton module
+--------------------------
+
+.. automodule:: xrd_learn.skeleton
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+xrd\_learn.xrd\_utils module
+----------------------------
+
+.. automodule:: xrd_learn.xrd_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+xrd\_learn.xrd\_viz module
+--------------------------
+
+.. automodule:: xrd_learn.xrd_viz
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: xrd_learn
+   :members:
+   :undoc-members:
+   :show-inheritance:

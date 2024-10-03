@@ -1,0 +1,7 @@
+xrd_learn
+=========
+
+.. toctree::
+   :maxdepth: 4
+
+   xrd_learn
