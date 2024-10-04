@@ -34,10 +34,19 @@ XRD-Learn
 =========
 
 
-    Add a short description here!
+    A Python package for visualizing and analyzing X-ray Diffraction (XRD) experimental data, providing tools to process, visualize, and extract meaningful insights from XRD patterns and measurements.
 
 
-A longer description of your project goes here...
+This Python package offers a comprehensive set of tools for the analysis and visualization of X-ray Diffraction (XRD) data. Designed for researchers working with XRD techniques, the package simplifies the process of analyzing raw XRD data, including peak identification, phase analysis, and lattice parameter calculations. Built-in functions enable users to visualize diffraction patterns in both 1D (XRD scan) and 2D (RSM).
+
+Key Features:
+--------------
+
+- Support for common XRD data formats (e.g., .xrdml).
+- Real-time 1D and 2D visualization of diffraction patterns.
+- Customizable workflows for advanced material characterization, including crystal structure and texture analysis.
+
+This package is ideal for materials science researchers and XRD users looking to streamline the analysis of complex diffraction data and extract detailed structural information about crystalline materials.
 
 
 .. _pyscaffold-notes:
