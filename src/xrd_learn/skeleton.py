@@ -26,8 +26,8 @@ import sys
 
 from xrd_learn import __version__
 
-__author__ = "Yichen Guo"
-__copyright__ = "Yichen Guo"
+__author__ = "Joshua C. Agar, Yichen Guo"
+__copyright__ = "Joshua C. Agar, Yichen Guo"
 __license__ = "MIT"
 
 _logger = logging.getLogger(__name__)
