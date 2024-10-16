@@ -168,7 +168,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/m3-learning/XRD-Learn.git",
+            "url": "https://github.com/m3-learning/AFM-Learn.git",
             "icon": "fab fa-github-square",
             "type": "fontawesome",
         },
