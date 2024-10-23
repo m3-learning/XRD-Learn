@@ -4,6 +4,14 @@ xrd\_learn package
 Submodules
 ----------
 
+xrd\_learn.rsm\_viz module
+--------------------------
+
+.. automodule:: xrd_learn.rsm_viz
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 xrd\_learn.skeleton module
 --------------------------
 
