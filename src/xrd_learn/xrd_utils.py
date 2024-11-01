@@ -20,10 +20,89 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xrayutilities as xu
 from typing import Union, List, Tuple
+from scipy.signal import find_peaks
 
 __author__ = "Joshua C. Agar, Yichen Guo"
 __copyright__ = "Joshua C. Agar, Yichen Guo"
 __license__ = "MIT"
+
+
+def calculate_fwhm(X, Y, px):
+    """
+    Calculate the Full Width at Half Maximum (FWHM) for a given peak.
+
+    Parameters:
+    -----------
+    X : array-like
+        X-axis data (e.g., 2θ values).
+    Y : array-like
+        Y-axis data (e.g., intensity values).
+    px : int
+        x-value of the peak for which to calculate FWHM.
+
+    Returns:
+    --------
+    fwhm : float
+        Full Width at Half Maximum (in the same units as x).
+    """
+
+    # Peak height (maximum intensity) and half maximum
+    peak_indices = int(np.where(X == px)[0])
+    peak_height = Y[X==px]
+    half_max = peak_height / 2
+
+    # Find the left and right points where intensity crosses half maximum
+    left_idx = np.where(Y[:peak_indices] <= half_max)[0][-1]
+    right_idx = np.where(Y[peak_indices:] <= half_max)[0][0] + peak_indices
+
+    # Calculate FWHM as the difference in x-values at half maximum
+    x_fwhm = X[right_idx] - X[left_idx]
+    y_fwhm = Y[right_idx]
+    return x_fwhm, y_fwhm, X[left_idx], X[right_idx]  # Return FWHM and x-positions
+
+
+def detect_peaks(x, y, num_peaks=3, prominence=0.1, distance=None):
+    """
+    Detects a specified number of peaks in the given x-y curve.
+
+    Parameters:
+    -----------
+    x : array-like
+        X-axis data (e.g., 2θ values).
+    y : array-like
+        Y-axis data (e.g., intensity values).
+    num_peaks : int
+        Number of top peaks to detect (default is 3).
+    prominence : float
+        Minimum prominence of peaks (default is 0.1).
+    distance : float or None
+        Minimum horizontal distance (in x-units) between peaks (optional).
+
+    Returns:
+    --------
+    peak_x : list
+        X-coordinates of detected peaks.
+    peak_y : list
+        Y-coordinates of detected peaks.
+    """
+    # Detect all peaks with the given prominence and distance
+    peaks, properties = find_peaks(y, prominence=prominence, distance=distance)
+
+    # Adjust number of peaks if fewer are detected
+    num_detected = len(peaks)
+    if num_detected < num_peaks:
+        print(f"Warning: Only {num_detected} peaks detected, fewer than requested.")
+        num_peaks = num_detected  # Use all available peaks
+
+
+    # Sort peaks by prominence and select the top ones
+    sorted_indices = sorted(range(len(peaks)), 
+                            key=lambda i: properties['prominences'][i], 
+                            reverse=True)[:num_peaks]
+    sorted_peaks = [peaks[i] for i in sorted_indices]
+    peak_x = [x[i] for i in sorted_peaks]
+    peak_y = [y[i] for i in sorted_peaks]
+    return peak_x, peak_y
 
 
 def load_xrd_scan(file):
@@ -88,13 +167,13 @@ def align_peak_to_value(Xs, Ys, target_x_peak, viz=False):
         X_shifted = X + shift
         if viz:
             plt.figure(figsize=(8, 1))
-            plt.plot(X, Y)
-            plt.plot(X_shifted, Y)
-            plt.axvline(target_x_peak, color='orange', linestyle='--', linewidth=1, label=f'Target: {target_x_peak:.2f}')
-            plt.axvline(current_x_peak, color='blue', linestyle='--', linewidth=1, label=f'Original: {current_x_peak:.2f}')
+            plt.plot(X, Y, color='tab:blue')
+            plt.plot(X_shifted, Y, color='tab:orange')
+            plt.axvline(current_x_peak, color='tab:blue', linestyle='--', linewidth=1, label=f'Original: {current_x_peak:.2f}')
+            plt.axvline(target_x_peak, color='tab:orange', linestyle='--', linewidth=1, label=f'Target: {target_x_peak:.2f}')
             plt.yscale('log')
             plt.legend()
-            plt.title(f'Peak: {current_x_peak:.2f} -> {target_x_peak:.2f}')
+            plt.title(f'Peak: {current_x_peak:.4f} -> {target_x_peak:.4f}')
             plt.show()
         Xs[i] = X_shifted
     return Xs, Ys
