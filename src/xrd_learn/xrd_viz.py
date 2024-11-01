@@ -1,5 +1,6 @@
 """
 This module provides functions for visualizing X-ray diffraction (XRD) data, including plotting XRD scans. These visualizations are useful for analyzing the structural properties of 
+This module provides functions for visualizing X-ray diffraction (XRD) data, including plotting XRD scans. These visualizations are useful for analyzing the structural properties of 
 materials through XRD experiments.
 
 Functions:
@@ -13,6 +14,7 @@ References:
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 from xrd_learn.xrd_utils import process_input
 
 __author__ = "Joshua C. Agar, Yichen Guo"
@@ -21,7 +23,7 @@ __license__ = "MIT"
 
 
 def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e3, fig=None, ax=None, figsize=(6,4), 
-             legend_style='legend', text_offset_ratio=None, grid=False, pad_sequence=[], filename=None):
+             legend_style='legend', colors=colormaps.get_cmap('tab10'), text_offset_ratio=None, grid=False, pad_sequence=[], filename=None):
     
     """Plot XRD scans for multiple datasets.
 
@@ -38,6 +40,7 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         ax (matplotlib.axes.Axes, optional): Custom axes for the plot.
         figsize (tuple, optional): Figure size. Default is (6, 4).
         legend_style (str, optional): Style of the legend. Default is 'legend', options: 'legend', 'label.
+        colors (list, optional): List of colors for the datasets. Default is None.
         text_offset_ratio (tuple, optional): Offset ratio for text labels. Default is None. (x_offset, y_offset).
         grid (bool, optional): Whether to show gridlines. Default is False.
         pad_sequence (list, optional): Sequence for padding datasets if they have different ranges.
@@ -50,12 +53,15 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     Xs, Ys, length_list = process_input(inputs)
         
     if np.mean(length_list) != np.max(length_list): # detect if scans have different length
+    if np.mean(length_list) != np.max(length_list): # detect if scans have different length
         if pad_sequence == []:
             print('Different scan ranges, input pad_sequence to pad')
             return 
         else: # if pad sequence is provided, pad the shorter scans
+        else: # if pad sequence is provided, pad the shorter scans
             for i in range(len(Ys)):
                 Ys[i] = np.pad(Ys[i], pad_sequence[i], mode='median')
+            Xs = [Xs[np.argmax(length_list)]]*len(Ys)
             Xs = [Xs[np.argmax(length_list)]]*len(Ys)
         
     if fig == None and ax == None:
@@ -64,11 +70,12 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         raise ValueError('fig and ax should be provided together for customized plot')
      
     for i, (X, Y) in enumerate(zip(Xs, Ys)):
+    for i, (X, Y) in enumerate(zip(Xs, Ys)):
         Y[Y==0] = 1  # remove all 0 value
         if diff:
             Y = Y * diff**(len(Ys)-i-1)
         if legend_style == 'legend':
-            ax.plot(X, Y, label=labels[i])
+            ax.plot(X, Y, label=labels[i], color=colors[i])
         elif legend_style == 'label':
             line, = ax.plot(X, Y)
             if text_offset_ratio != None:
@@ -87,6 +94,8 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     ax.set_ylabel('Intensity [a.u.]')
     if legend_style == 'legend':
         ax.legend()
+    if legend_style == 'legend':
+        ax.legend()
 
     ax.set_title(title)
     if filename and fig==None and ax==None:
@@ -95,6 +104,9 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         raise ValueError('Figure won\'t be saved when fig and ax are provided') 
 
     # plt.xticks(np.arange(*xrange, 1))
+    ax.tick_params(axis="x", direction="in", top=True)
+    ax.tick_params(axis="y", direction="in", right=True)    
+    
     ax.tick_params(axis="x", direction="in", top=True)
     ax.tick_params(axis="y", direction="in", right=True)    
     
