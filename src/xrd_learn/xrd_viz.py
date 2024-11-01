@@ -83,7 +83,7 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     if isinstance(yrange, tuple):
         plt.ylim(yrange)  
         
-    ax.set_xlabel(r"2$\Theta$")
+    ax.set_xlabel(r"2$\Theta$ [°]")
     ax.set_ylabel('Intensity [a.u.]')
     if legend_style == 'legend':
         ax.legend()
