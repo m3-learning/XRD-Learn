@@ -1,6 +1,5 @@
 """
 This module provides functions for visualizing X-ray diffraction (XRD) data, including plotting XRD scans. These visualizations are useful for analyzing the structural properties of 
-This module provides functions for visualizing X-ray diffraction (XRD) data, including plotting XRD scans. These visualizations are useful for analyzing the structural properties of 
 materials through XRD experiments.
 
 Functions:
@@ -53,11 +52,9 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     Xs, Ys, length_list = process_input(inputs)
         
     if np.mean(length_list) != np.max(length_list): # detect if scans have different length
-    if np.mean(length_list) != np.max(length_list): # detect if scans have different length
         if pad_sequence == []:
             print('Different scan ranges, input pad_sequence to pad')
             return 
-        else: # if pad sequence is provided, pad the shorter scans
         else: # if pad sequence is provided, pad the shorter scans
             for i in range(len(Ys)):
                 Ys[i] = np.pad(Ys[i], pad_sequence[i], mode='median')
@@ -69,7 +66,6 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     elif (fig == None and ax != None) or (fig != None and ax == None):
         raise ValueError('fig and ax should be provided together for customized plot')
      
-    for i, (X, Y) in enumerate(zip(Xs, Ys)):
     for i, (X, Y) in enumerate(zip(Xs, Ys)):
         Y[Y==0] = 1  # remove all 0 value
         if diff:
@@ -94,8 +90,6 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     ax.set_ylabel('Intensity [a.u.]')
     if legend_style == 'legend':
         ax.legend()
-    if legend_style == 'legend':
-        ax.legend()
 
     ax.set_title(title)
     if filename and fig==None and ax==None:
@@ -104,9 +98,6 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         raise ValueError('Figure won\'t be saved when fig and ax are provided') 
 
     # plt.xticks(np.arange(*xrange, 1))
-    ax.tick_params(axis="x", direction="in", top=True)
-    ax.tick_params(axis="y", direction="in", right=True)    
-    
     ax.tick_params(axis="x", direction="in", top=True)
     ax.tick_params(axis="y", direction="in", right=True)    
     
