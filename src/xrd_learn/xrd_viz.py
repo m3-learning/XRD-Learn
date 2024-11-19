@@ -21,8 +21,7 @@ __copyright__ = "Joshua C. Agar, Yichen Guo"
 __license__ = "MIT"
 
 
-def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e3, fig=None, ax=None, figsize=(6,4), 
-             legend_style='legend', colors=colormaps.get_cmap('tab10'), text_offset_ratio=None, grid=False, pad_sequence=[], filename=None):
+def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e3, yscale='log', fig=None, ax=None, figsize=(6,4), xlabel=r"2$\Theta$ [°]", ylabel='Intensity [a.u.]', legend_style='legend', colors=colormaps.get_cmap('tab10'), text_offset_ratio=None, grid=False, pad_sequence=[], filename=None):
     
     """Plot XRD scans for multiple datasets.
 
@@ -35,6 +34,7 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         title (str, optional): Title of the plot. Default is 'XRD Scan'.
         xrange (tuple, optional): The x-axis range for the plot.
         diff (float, optional): Scaling factor between different datasets. Default is 1e3.
+        yscale (str, optional): Scale of the y-axis. Default is 'log'. Options: 'linear', 'log'.
         fig (matplotlib.figure.Figure, optional): Custom figure for the plot.
         ax (matplotlib.axes.Axes, optional): Custom axes for the plot.
         figsize (tuple, optional): Figure size. Default is (6, 4).
@@ -50,6 +50,10 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     """
     
     Xs, Ys, length_list = process_input(inputs)
+    for i, (X, Y) in enumerate(zip(Xs, Ys)):
+        if isinstance(xrange, tuple):
+            Ys[i] = Y[(X >= xrange[0]) & (X <= xrange[1])]
+            Xs[i] = X[(X >= xrange[0]) & (X <= xrange[1])]
         
     if np.mean(length_list) != np.max(length_list): # detect if scans have different length
         if pad_sequence == []:
@@ -70,6 +74,7 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         Y[Y==0] = 1  # remove all 0 value
         if diff:
             Y = Y * diff**(len(Ys)-i-1)
+            
         if legend_style == 'legend':
             ax.plot(X, Y, label=labels[i], color=colors[i])
         elif legend_style == 'label':
@@ -78,16 +83,16 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
                 ax.text(X[-1]*text_offset_ratio[0], Y[-1]*text_offset_ratio[1], labels[i], fontsize=10, color=line.get_color())
             else:
                 ax.text(X[-1], Y[-1], labels[i], fontsize=10, color=line.get_color())
-        
-    plt.yscale('log',base=10) 
-    if isinstance(xrange, tuple):
-        plt.xlim(xrange)  
-        
-    if isinstance(yrange, tuple):
-        plt.ylim(yrange)  
-        
-    ax.set_xlabel(r"2$\Theta$ [°]")
-    ax.set_ylabel('Intensity [a.u.]')
+        else:
+            ax.plot(X, Y, color=colors[i])
+    
+    # if isinstance(xrange, tuple):
+    #     plt.xlim(xrange)  
+    # if isinstance(yrange, tuple):
+    #     plt.ylim(yrange)  
+    
+    ax.set_xlabel(xlabel)   
+    ax.set_ylabel(ylabel)
     if legend_style == 'legend':
         ax.legend()
 
@@ -98,7 +103,10 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         raise ValueError('Figure won\'t be saved when fig and ax are provided') 
 
     # plt.xticks(np.arange(*xrange, 1))
+    if yscale=='log':
+        ax.set_yscale('log', base=10) 
     ax.tick_params(axis="x", direction="in", top=True)
+    ax.tick_params(axis='y', which='minor', length=0) # remove minor ticks in case double ticks showed up
     ax.tick_params(axis="y", direction="in", right=True)    
     
     if grid: plt.grid()
