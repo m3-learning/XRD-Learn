@@ -35,7 +35,9 @@ class RSMPlotter:
                         'title': None,
                         'figsize': None, 
                         "cmap": plt.cm.viridis,
-                        "fontsize": 8,
+                        "title_fontsize": 12,
+                        "label_fontsize": 10,
+                        "tick_fontsize": 8,
                         "log_scale": True,
                         "cbar_value_format": 'actual',
                         "cbar_levels": 20,
@@ -55,13 +57,12 @@ class RSMPlotter:
         self.plot_params = {**default_params, **(plot_params or {})}
 
         
-    def plot(self, file, fig=None, axes=None, ax=None, figsize=None):
+    def plot(self, file, ax=None, figsize=None, cbar_ax=None, ignore_yaxis=False):
         """
         Plot the reciprocal space map (RSM) or direct space map.
 
         Args:
             file (str): Path to the XRDML file.
-            fig (matplotlib.figure.Figure, optional): Custom figure for the plot.
             axes (list, optional): List of axes for the plot.
             ax (matplotlib.axes.Axes, optional): Custom axes for the plot.
             figsize (tuple, optional): Figure size. Default is None.
@@ -76,19 +77,22 @@ class RSMPlotter:
         two_theta = two_theta.reshape(curve_shape)
         intensity = intensity.reshape(curve_shape)
         
-        fig, ax = self._prepare_figure(fig, ax, figsize)
+        fig, ax = self._prepare_figure(ax, figsize)
         
         reciprocal_space = self.plot_params.get("reciprocal_space", True)
         if reciprocal_space:
             Qx, Qz = self._calculate_reciprocal_space(omega, two_theta)
-            self._plot_reciprocal_space(fig, axes, ax, Qx, Qz, intensity)
+            cs = self._plot_reciprocal_space(ax, Qx, Qz, intensity)
         else:
             self._plot_direct_space(ax, omega, two_theta, intensity)
-        self._apply_plot_settings(ax)
-        
-        ax.tick_params(axis="x", direction="in", top=True)
-        ax.tick_params(axis="y", direction="in", right=True)    
-    
+            
+        if cbar_ax:
+            cbar_ticks = self.plot_params.get("cbar_ticks", 10)
+            cbar_size = self.plot_params.get("cbar_size", 10)
+            self._add_colorbar(fig, cbar_ax, cs, cbar_ticks, cbar_size)
+            
+        self._apply_plot_settings(ax,ignore_yaxis )
+
         save_path = self.plot_params.get("save_path")
         if save_path:
             plt.savefig(f"{save_path}.svg", dpi=600)
@@ -100,14 +104,13 @@ class RSMPlotter:
 
         return Qx, Qz, intensity
 
-    def _prepare_figure(self, fig, ax, figsize):
+    def _prepare_figure(self, ax, figsize):
         """Prepare the figure and axes for plotting."""
 
-        if fig is None and ax is None:
+        if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
-        elif (fig is None) != (ax is None):
-            raise ValueError('Both "fig" and "ax" should be provided together.')
-
+        else:
+            fig = ax.get_figure()
         return fig, ax
     
     def _get_subplot_indices(self, fig, ax):
@@ -133,29 +136,35 @@ class RSMPlotter:
         Qx = k * (np.cos(np.deg2rad(omega)) - np.cos(np.deg2rad(two_theta - omega)))
         return Qx, Qz
 
-    def _plot_reciprocal_space(self, fig, axes, ax, Qx, Qz, intensity):
+    def _plot_reciprocal_space(self, ax, Qx, Qz, intensity):
         """
         Plot the reciprocal space map with optional logarithmic scaling.
         
         Args:
             fig: Figure object
-            axes: List of axes objects
             ax: Axis object
             Qx: 2D array of Qx values
             Qz: 2D array of Qz values
             intensity: 2D array of intensity values
+            cbar_ax: Axis object for the colorbar, note that:
+                    'last' will add colorbar to the last column only, 
+                    'every' will add colorbar to every plot, 
+                    ax will add colorbar to the current plot only,
+                    None will not add colorbar at all.
+                    Nested axes is only compatible with ax and None option.
         """
         
         log_scale = self.plot_params.get("log_scale", True)
         cmap = self.plot_params.get("cmap", plt.cm.viridis)
         vmin, vmax = self._get_intensity_limits(intensity)
         cbar_levels = self.plot_params.get("cbar_levels", 20)
-        cbar_ticks = self.plot_params.get("cbar_ticks", 10)
-        cbar_size = self.plot_params.get("cbar_size", 10)
         custom_bg_color = self.plot_params.get("custom_bg_color")
 
-        # Detect layout information
-        row_index, col_index, nrows, ncols = self._get_subplot_indices(fig, ax)
+        from scipy.ndimage import zoom
+        downsample_factor = 0.5
+        Qx = zoom(Qx, downsample_factor)
+        Qz = zoom(Qz, downsample_factor)
+        intensity = zoom(intensity, downsample_factor)
 
         if log_scale:
             intensity = self._adjust_intensity(intensity, vmin, vmax)
@@ -163,28 +172,35 @@ class RSMPlotter:
             cmap = self._create_custom_colormap(cmap, custom_bg_color)
             cs = ax.contourf(Qx, Qz, intensity, levels=levels, cmap=cmap,
                              norm=colors.LogNorm(vmin=vmin, vmax=vmax), extend='neither')
+            cs.set_rasterized(True) # improve the render quality but get a warning
         else:
             cs = ax.contourf(Qx, Qz, intensity, levels=cbar_levels, cmap=cmap)
             
         # Add colorbar only if this is the far-right column (exclude the last column for the colorbar)
-        if col_index == ncols - 2:
-            self._add_colorbar(fig, axes[:-1], axes[-1], cs, cbar_ticks, cbar_size)
-            # cbar = fig.colorbar(cs, ax=fig.axes, orientation='vertical', 
-            #                     fraction=self.plot_params.get('cbar_fraction', 0.1), 
-            #                     pad=self.plot_params.get('cbar_pad', 0.1))
+        # if cbar_ax == 'last':
+        #     # Detect layout information
+        #     row_index, col_index, nrows, ncols = self._get_subplot_indices(fig, ax)
+        #     if col_index == ncols - 1: # Add colorbar to the last column only
+        #         self._add_colorbar(fig, ax, cs, cbar_ticks, cbar_size)
+        #         # cbar = fig.colorbar(cs, ax=fig.axes, orientation='vertical', 
+        #         #                     fraction=self.plot_params.get('cbar_fraction', 0.1), 
+        #         #                     pad=self.plot_params.get('cbar_pad', 0.1))
+        # elif cbar_ax == 'every':
+        #     row_index, col_index, nrows, ncols = self._get_subplot_indices(fig, ax)
+        #     if col_index//2 == 1:
+        #         self._add_colorbar(fig, ax, cs, cbar_ticks, cbar_size)
                 
-        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]', fontsize=self.plot_params.get("fontsize", 12), fontweight='bold')
-        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]', fontsize=self.plot_params.get("fontsize", 12), fontweight='bold')
-        ax.tick_params(axis="x", labelsize=self.plot_params.get("fontsize", 12))
-        ax.tick_params(axis="y", labelsize=self.plot_params.get("fontsize", 12))
+        # elif isinstance(cbar_ax, plt.Axes):
+            # self._add_colorbar(fig, ax, cs, cbar_ticks, cbar_size)
+            
 
-        # Only show y-axis for the first plot
-        if self.plot_params.get("show_yaxis", 'all') == 'first' and col_index != 0:
-            # ax.set_yticks([])
-            ax.set_yticklabels([])
-            ax.set_ylabel('')
-        elif self.plot_params.get("show_yaxis", 'all') == 'last':
-            raise ValueError('show_yaxis="last" is not supported for RSM plots.')
+        # # Only show y-axis for the first plot
+        # if self.plot_params.get("show_yaxis", 'all') == 'first' and col_index != 0:
+        #     ax.set_yticks([])
+        #     ax.set_yticklabels([])
+        #     ax.set_ylabel('')
+        # elif self.plot_params.get("show_yaxis", 'all') == 'last':
+        #     raise ValueError('show_yaxis="last" is not supported for RSM plots.')
             
         # # Only show x-axis for the last plot
         # elif self.plot_params.get("show_xaxis", 'all') == 'first':
@@ -195,15 +211,14 @@ class RSMPlotter:
         #     ax.set_xlabel('')
             
         self._blend_background_color(intensity, Qx, Qz, ax, cs, custom_bg_color)
-            
+        return cs
 
-    def _add_colorbar(self, fig, axes_to_attach, cax, cs, cbar_ticks, cbar_size):
+    def _add_colorbar(self, fig, cax, cs, cbar_ticks, cbar_size):
         """
         Add a colorbar with custom tick formatting.
         
         Args:
             fig: Figure object
-            axes_to_attach: List of axes to attach the colorbar
             cax: Axis object to attach the colorbar
             cs: ContourSet object
             cbar_ticks: Number of ticks on the colorbar
@@ -212,7 +227,7 @@ class RSMPlotter:
         # cbar = plt.colorbar(cs, ax=ax, extendfrac='auto')
         # This code snippet is adding a colorbar to the plot. Here's a breakdown of what each line is
         # doing:
-        cbar = fig.colorbar(cs, ax=axes_to_attach, cax=cax, orientation='vertical', 
+        cbar = fig.colorbar(cs, cax=cax, orientation='vertical', 
                             fraction=self.plot_params.get('cbar_fraction', 0.1), pad=self.plot_params.get('cbar_pad', 0.1))
         # cbar = fig.colorbar(cs, ax=axes, orientation='vertical', 
         #                     fraction=self.plot_params.get('cbar_fraction', 0.1), pad=self.plot_params.get('cbar_pad', 0.1))
@@ -224,9 +239,9 @@ class RSMPlotter:
 
         def format_func(value, tick_number):
             if self.plot_params.get("cbar_value_format", 'actual') == 'log':
-                return f"$10^{{{np.log10(value):.1f}}}$"
+                return f"$10^{{{np.log10(value):.0f}}}$"
             elif self.plot_params.get("cbar_value_format", 'actual') == 'actual':
-                return f"{value:.1f}"
+                return f"{value:.0f}"
         
         cbar.formatter = ticker.FuncFormatter(format_func)
         cbar.update_ticks()
@@ -282,15 +297,23 @@ class RSMPlotter:
             return colors.LinearSegmentedColormap.from_list("custom", color_list)
         return cmap
 
-    def _apply_plot_settings(self, ax):
+    def _apply_plot_settings(self, ax, ignore_yaxis):
         """Apply axis limits, title, and tick settings."""
         if xlim := self.plot_params.get("xlim"):
             ax.set_xlim(xlim)
         if ylim := self.plot_params.get("ylim"):
             ax.set_ylim(ylim)
 
-        ax.tick_params(axis="x", labelsize=self.plot_params.get("fontsize", 12))
-        ax.tick_params(axis="y", labelsize=self.plot_params.get("fontsize", 12))
+        ax.tick_params(axis="x", direction="in", top=True, labelsize=self.plot_params.get("tick_fontsize", 8))
+        ax.tick_params(axis="y", direction="in", right=True, labelsize=self.plot_params.get("tick_fontsize", 8))    
+                
+        ax.set_xlabel(r'$Q_x$ [$\AA^{-1}$]', fontsize=self.plot_params['label_fontsize'], fontweight='bold')
+        ax.set_ylabel(r'$Q_z$ [$\AA^{-1}$]', fontsize=self.plot_params['label_fontsize'], fontweight='bold')
 
+        if ignore_yaxis:
+            ax.set_yticks([])
+            ax.set_yticklabels([])
+            ax.set_ylabel('')
+            
         if title := self.plot_params.get("title"):
-            ax.set_title(title, fontsize=self.plot_params.get("fontsize", 12))
+            ax.set_title(title, fontsize=self.plot_params.get("title_fontsize", 12))

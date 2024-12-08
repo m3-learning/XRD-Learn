@@ -67,8 +67,6 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         
     if fig == None and ax == None:
         fig, ax = plt.subplots(figsize=figsize)
-    elif (fig == None and ax != None) or (fig != None and ax == None):
-        raise ValueError('fig and ax should be provided together for customized plot')
      
     for i, (X, Y) in enumerate(zip(Xs, Ys)):
         Y[Y==0] = 1  # remove all 0 value
@@ -86,23 +84,13 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         else:
             ax.plot(X, Y, color=colors[i])
     
-    # if isinstance(xrange, tuple):
-    #     plt.xlim(xrange)  
-    # if isinstance(yrange, tuple):
-    #     plt.ylim(yrange)  
-    
     ax.set_xlabel(xlabel)   
     ax.set_ylabel(ylabel)
     if legend_style == 'legend':
         ax.legend()
 
     ax.set_title(title)
-    if filename and fig==None and ax==None:
-        plt.savefig(filename)
-    elif filename and fig!=None and ax!=None:
-        raise ValueError('Figure won\'t be saved when fig and ax are provided') 
 
-    # plt.xticks(np.arange(*xrange, 1))
     if yscale=='log':
         ax.set_yscale('log', base=10) 
     ax.tick_params(axis="x", direction="in", top=True)
@@ -110,7 +98,3 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
     ax.tick_params(axis="y", direction="in", right=True)    
     
     if grid: plt.grid()
-
-    if fig == None and ax == None:
-        plt.tight_layout()
-        plt.show()
