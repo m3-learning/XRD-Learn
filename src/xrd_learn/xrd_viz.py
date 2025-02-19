@@ -21,7 +21,7 @@ __copyright__ = "Joshua C. Agar, Yichen Guo"
 __license__ = "MIT"
 
 
-def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e3, yscale='log', fig=None, ax=None, figsize=(6,4), xlabel=r"2$\Theta$ [°]", ylabel='Intensity [a.u.]', legend_style='legend', colors=colormaps.get_cmap('tab10'), text_offset_ratio=None, grid=False, pad_sequence=[], filename=None):
+def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e3, yscale='log', fig=None, ax=None, figsize=(6,4), xlabel=r"2$\Theta$ [°]", ylabel='Intensity [a.u.]', legend_style='legend', colors=colormaps.get_cmap('tab10'), text_offset_ratio=None, grid=False, pad_sequence=[]):
     
     """Plot XRD scans for multiple datasets.
 
@@ -43,7 +43,6 @@ def plot_xrd(inputs, labels, title='XRD Scan', xrange=None, yrange=None, diff=1e
         text_offset_ratio (tuple, optional): Offset ratio for text labels. Default is None. (x_offset, y_offset).
         grid (bool, optional): Whether to show gridlines. Default is False.
         pad_sequence (list, optional): Sequence for padding datasets if they have different ranges.
-        filename (str, optional): If provided, the plot will be saved with the given filename.
     
     Returns:
         None: Displays the plot or saves the figure to a file.
