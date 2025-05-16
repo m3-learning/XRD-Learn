@@ -23,6 +23,8 @@ from typing import Union, List, Tuple
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
+from scipy.fft import fft, fftfreq
+
 
 __author__ = "Joshua C. Agar, Yichen Guo"
 __copyright__ = "Joshua C. Agar, Yichen Guo"
@@ -405,3 +407,100 @@ def process_input(input_data: Union[str, List[str], Tuple[List, List, List]]):
             raise ValueError("Tuple must contain three lists")
     else:
         raise ValueError("Invalid input type")
+    
+
+def detect_fringes_thickness(
+    angle, intensity, wavelength=1.5406, fringe_range=(44, 45.5),
+    prominence=0.01, min_distance_deg=0.1, mode="both"
+):
+    """
+    Estimate thin film thickness from XRD Kiessig fringes using either FFT or peak-finding method.
+
+    Parameters:
+        angle (array): Omega or 2Theta angles in degrees.
+        intensity (array): Corresponding XRD intensity values.
+        wavelength (float): X-ray wavelength in Å (default is Cu Kα: 1.5406 Å).
+        fringe_range (tuple): Angle range to search for fringes.
+        prominence (float): Prominence threshold for peak detection.
+        min_distance_deg (float): Minimum distance between peaks (in degrees).
+        mode (str): "fft", "peak", or "both".
+
+    Returns:
+        dict: Thickness estimates and intermediate values.
+    """
+
+    # --- Focused region ---
+    mask = (angle >= fringe_range[0]) & (angle <= fringe_range[1])
+    angle_roi = angle[mask]
+    intensity_roi = intensity[mask]
+
+    # Interpolate to uniform grid
+    angle_uniform = np.linspace(angle_roi.min(), angle_roi.max(), 1000)
+    intensity_interp = np.interp(angle_uniform, angle_roi, intensity_roi)
+    intensity_log = np.log10(intensity_interp + 1)
+
+    # Remove smooth background (2nd-order polynomial)
+    coeffs = np.polyfit(angle_uniform, intensity_log, deg=2)
+    background = np.polyval(coeffs, angle_uniform)
+    intensity_detrended = intensity_log - background
+
+    results = {}
+
+    # --- FFT method ---
+    if mode in ["fft", "both"]:
+        fft_vals = np.abs(fft(intensity_detrended - np.mean(intensity_detrended)))
+        freqs = fftfreq(len(angle_uniform), angle_uniform[1] - angle_uniform[0])
+        pos_mask = freqs > 0
+        fft_vals = fft_vals[pos_mask]
+        freqs = freqs[pos_mask]
+
+        dominant_freq = freqs[np.argmax(fft_vals)]
+        delta_theta_fft = 1 / dominant_freq
+        avg_theta_rad = np.deg2rad((angle_roi.min() + angle_roi.max()) / 2)
+
+        # Approximate thickness using small-angle assumption (optional)
+        thickness_fft_angstrom = wavelength / (2 * delta_theta_fft * np.cos(avg_theta_rad))
+
+        # Plot FFT
+        plt.figure(figsize=(5, 3))
+        plt.plot(freqs, fft_vals)
+        plt.xlabel("Frequency (1/degree)")
+        plt.ylabel("FFT Amplitude")
+        plt.title("FFT of Log(Intensity) (Fringe Periodicity)")
+        plt.grid(True)
+        plt.show()
+
+        results['FFT Delta 2Theta (deg)'] = delta_theta_fft
+        results['FFT Thickness (nm)'] = thickness_fft_angstrom / 10
+
+    # --- Peak finding method ---
+    if mode in ["peak", "both"]:
+        min_distance_pts = int(min_distance_deg / (angle_uniform[1] - angle_uniform[0]))
+        peaks, _ = find_peaks(intensity_log, prominence=prominence, distance=min_distance_pts)
+        peak_angles = angle_uniform[peaks]
+
+        if len(peak_angles) > 1:
+            theta_rad_peaks = np.deg2rad(peak_angles / 2)  # Correct for 2θ axis
+            delta_sin_theta = np.mean(np.diff(np.sin(theta_rad_peaks)))
+            thickness_peaks_angstrom = wavelength / (2 * delta_sin_theta)
+        else:
+            delta_sin_theta = None
+            thickness_peaks_angstrom = None
+
+        # Plot log intensity with detected peaks
+        plt.figure(figsize=(5, 3))
+        plt.plot(angle_uniform, intensity_log, label='Log(Intensity)')
+        if len(peak_angles) > 0:
+            plt.plot(peak_angles, intensity_log[peaks], 'ro', label='Detected Fringes')
+        plt.xlabel("Angle (degree)")
+        plt.ylabel("Log Intensity (a.u.)")
+        plt.title("Fringe Detection in XRD (Log Scale)")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+        results['Peak Find Delta sin(Theta)'] = delta_sin_theta
+        results['Peak Find Thickness (nm)'] = thickness_peaks_angstrom / 10 if thickness_peaks_angstrom else None
+
+    # print(f"Results: {results}")
+    return results
